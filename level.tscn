@@ -2,6 +2,8 @@
 
 [ext_resource type="Texture2D" uid="uid://be65a3d1rf0yg" path="res://MapTiles/Platformer/Cartoon_Medieval_Field_Work_Level_Set_Platformer - Ground 01.png" id="1_h6smj"]
 [ext_resource type="PackedScene" uid="uid://r4xfl76s8k2v" path="res://player.tscn" id="1_u52ul"]
+[ext_resource type="PackedScene" path="res://boss.tscn" id="boss_scene"]
+[ext_resource type="Script" path="res://Scripts/BossHud.cs" id="boss_hud_script"]
 [ext_resource type="Texture2D" uid="uid://dliy5tjsvd2ue" path="res://MapTiles/Platformer/Cartoon_Medieval_Field_Work_Level_Set_Platformer - Ground 02.png" id="2_v5j5c"]
 [ext_resource type="Texture2D" uid="uid://dub4jwkvs5xcp" path="res://MapTiles/Platformer/Cartoon_Medieval_Field_Work_Level_Set_Platformer - Ground 11.png" id="3_5pxul"]
 [ext_resource type="Texture2D" uid="uid://dcafhxk400eyy" path="res://MapTiles/Platformer/Cartoon_Medieval_Field_Work_Level_Set_Platformer - Ground 12.png" id="4_fedht"]
@@ -811,6 +813,43 @@ tile_set = SubResource("TileSet_bwjto")
 [node name="Player" parent="." unique_id=160871218 instance=ExtResource("1_u52ul")]
 position = Vector2(-17376, 455)
 safe_margin = 0.001
+
+[node name="Boss" parent="." instance=ExtResource("boss_scene")]
+position = Vector2(-17120, 455)
+
+[node name="HUD" type="CanvasLayer" parent="."]
+script = ExtResource("boss_hud_script")
+
+[node name="PlayerHealth" type="Label" parent="HUD"]
+offset_left = 24.0
+offset_top = 18.0
+offset_right = 280.0
+offset_bottom = 54.0
+theme_override_font_sizes/font_size = 24
+text = "KNIGHT  5 / 5"
+
+[node name="BossHealth" type="Label" parent="HUD"]
+offset_left = 24.0
+offset_top = 54.0
+offset_right = 280.0
+offset_bottom = 90.0
+theme_override_font_sizes/font_size = 24
+text = "BOSS  20 / 20"
+
+[node name="Status" type="Label" parent="HUD"]
+offset_left = 24.0
+offset_top = 92.0
+offset_right = 500.0
+offset_bottom = 128.0
+theme_override_font_sizes/font_size = 24
+
+[node name="Controls" type="Label" parent="HUD"]
+offset_left = 24.0
+offset_top = 680.0
+offset_right = 700.0
+offset_bottom = 710.0
+theme_override_font_sizes/font_size = 16
+text = "A/D move   Space jump   Left click attack   Right click block"
 
 [node name="LeftWall" type="StaticBody2D" parent="." unique_id=830435602]
 

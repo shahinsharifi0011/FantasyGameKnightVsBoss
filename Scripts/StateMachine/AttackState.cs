@@ -10,7 +10,13 @@ public partial class AttackState : KnightState
     public override void Enter()
     {
         Controller.PlayAnimation("attack");
+        Controller.SetAttackActive(true);
         _elapsed = 0.0;
+    }
+
+    public override void Exit()
+    {
+        Controller.SetAttackActive(false);
     }
 
     public override void Update(double delta)

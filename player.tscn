@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://r4xfl76s8k2v"]
 
 [ext_resource type="Script" uid="uid://s61i5bk0vt7j" path="res://Scripts/KnightController.cs" id="1_1jxqw"]
+[ext_resource type="Script" path="res://Scripts/HealthComponent.cs" id="health_component"]
 [ext_resource type="Script" uid="uid://bx8kajirxj5bk" path="res://Scripts/StateMachine/KnightStateMachine.cs" id="2_1jxqw"]
 [ext_resource type="Script" uid="uid://bq6ol13go4hjl" path="res://Scripts/StateMachine/IdleState.cs" id="3_dw050"]
 [ext_resource type="Script" uid="uid://5mjl7ymau2en" path="res://Scripts/StateMachine/WalkState.cs" id="4_b26j0"]
@@ -16,6 +17,9 @@
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_v5j5c"]
 radius = 25.0
 height = 68.0
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_attack"]
+size = Vector2(70, 50)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_u1c27"]
 atlas = ExtResource("7_nvl01")
@@ -322,6 +326,11 @@ animations = [{
 position = Vector2(2008, 2401)
 script = ExtResource("1_1jxqw")
 
+[node name="HealthComponent" type="Node" parent="."]
+script = ExtResource("health_component")
+MaxHealth = 5
+InvulnerabilityDuration = 0.75
+
 [node name="StateMachine" type="Node" parent="." unique_id=2078363726]
 script = ExtResource("2_1jxqw")
 InitialStatePath = NodePath("Idle")
@@ -354,3 +363,13 @@ position = Vector2(-1.999939, -30.999908)
 scale = Vector2(1.6285119, 1.7597586)
 sprite_frames = SubResource("SpriteFrames_1cplq")
 animation = &"attack"
+
+[node name="AttackHitbox" type="Area2D" parent="."]
+position = Vector2(58, -5)
+collision_layer = 0
+collision_mask = 1
+monitoring = false
+monitorable = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="AttackHitbox"]
+shape = SubResource("RectangleShape2D_attack")
