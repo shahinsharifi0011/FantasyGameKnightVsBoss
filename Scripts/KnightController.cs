@@ -38,6 +38,7 @@ public partial class KnightController : CharacterBody2D
     private readonly HashSet<ulong> _hitBosses = new();
     private float _facingDirection = 1.0f;
     private bool _isDead;
+    private bool _deathSequenceFinished;
 
     public float MoveInput => Input.GetAxis(MoveLeftAction, MoveRightAction);
     public bool IsBlocking =>
@@ -210,19 +211,23 @@ public partial class KnightController : CharacterBody2D
 
     private void OnDeathAnimationFinished()
     {
-        if (_isDead && _animatedSprite.Animation == new StringName("death"))
+        if (!_isDead
+            || _deathSequenceFinished
+            || _animatedSprite.Animation != new StringName("death"))
         {
-            Godot.Collections.Array<Node> gameOverScreens = GetTree().GetNodesInGroup("GameOverUI");
-            if (gameOverScreens.Count > 0
-                && gameOverScreens[0] is GameOverScreen gameOverScreen)
-            {
-                gameOverScreen.ShowGameOver();
-                return;
-            }
-
-            GD.PushError("No GameOverScreen was found; restarting the level.");
-            GetTree().ReloadCurrentScene();
+            return;
         }
+
+        _deathSequenceFinished = true;
+        Godot.Collections.Array<Node> gameOverScreens = GetTree().GetNodesInGroup("GameOverUI");
+        if (gameOverScreens.Count > 0
+            && gameOverScreens[0] is GameOverScreen gameOverScreen)
+        {
+            gameOverScreen.ShowGameOver();
+            return;
+        }
+
+        GD.PushError("No GameOverScreen was found; the player remains dead.");
     }
 
     private void DisableCollisionsRecursively(Node node)
