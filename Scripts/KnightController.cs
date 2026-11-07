@@ -37,6 +37,7 @@ public partial class KnightController : CharacterBody2D
     private Area2D _attackHitbox = null!;
     private readonly HashSet<ulong> _hitBosses = new();
     private float _facingDirection = 1.0f;
+    private bool _isDead;
 
     public float MoveInput => Input.GetAxis(MoveLeftAction, MoveRightAction);
     public bool IsBlocking => _stateMachine.CurrentState is BlockState;
@@ -48,13 +49,20 @@ public partial class KnightController : CharacterBody2D
         _health = GetNode<HealthComponent>(HealthComponentPath);
         _attackHitbox = GetNode<Area2D>(AttackHitboxPath);
         _health.Died += OnDied;
+        _animatedSprite.AnimationFinished += OnDeathAnimationFinished;
         _attackHitbox.BodyEntered += OnAttackHitboxBodyEntered;
         _attackHitbox.Monitoring = false;
+        AddToGroup("Player");
         AddToGroup("player");
     }
 
     public override void _PhysicsProcess(double delta)
     {
+        if (_isDead)
+        {
+            return;
+        }
+
         _stateMachine.PhysicsUpdate(delta);
 
         if (!IsOnFloor())
@@ -87,6 +95,11 @@ public partial class KnightController : CharacterBody2D
 
     public void TakeDamage(int amount)
     {
+        if (_isDead)
+        {
+            return;
+        }
+
         if (IsBlocking)
         {
             amount = Math.Max(1, amount / 2);
@@ -145,7 +158,7 @@ public partial class KnightController : CharacterBody2D
 
     private void OnAttackHitboxBodyEntered(Node2D body)
     {
-        if (!body.IsInGroup("boss") || !_hitBosses.Add(body.GetInstanceId()))
+        if (!body.IsInGroup("Boss") || !_hitBosses.Add(body.GetInstanceId()))
         {
             return;
         }
@@ -159,20 +172,58 @@ public partial class KnightController : CharacterBody2D
 
     private void OnDied()
     {
+        if (_isDead)
+        {
+            return;
+        }
+
+        _stateMachine.TransitionTo(_stateMachine.GetState<DeathState>());
+    }
+
+    public void BeginDeath()
+    {
+        _isDead = true;
         SetAttackActive(false);
         Velocity = Vector2.Zero;
         _stateMachine.SetProcess(false);
         _stateMachine.SetPhysicsProcess(false);
-        SetProcess(false);
         SetPhysicsProcess(false);
 
-        SceneTreeTimer restartTimer = GetTree().CreateTimer(2.0);
-        restartTimer.Timeout += () =>
+        SetDeferred(CollisionObject2D.PropertyName.CollisionLayer, 0);
+        SetDeferred(CollisionObject2D.PropertyName.CollisionMask, 0);
+        DisableCollisionsRecursively(this);
+        PlayAnimation("death");
+    }
+
+    private void OnDeathAnimationFinished()
+    {
+        if (_isDead && _animatedSprite.Animation == new StringName("death"))
         {
-            if (IsInsideTree())
+            GetTree().ReloadCurrentScene();
+        }
+    }
+
+    private void DisableCollisionsRecursively(Node node)
+    {
+        foreach (Node child in node.GetChildren())
+        {
+            if (child is CollisionShape2D collisionShape)
             {
-                GetTree().ReloadCurrentScene();
+                collisionShape.SetDeferred(CollisionShape2D.PropertyName.Disabled, true);
             }
-        };
+            else if (child is CollisionPolygon2D collisionPolygon)
+            {
+                collisionPolygon.SetDeferred(CollisionPolygon2D.PropertyName.Disabled, true);
+            }
+            else if (child is Area2D area)
+            {
+                area.SetDeferred(Area2D.PropertyName.Monitoring, false);
+                area.SetDeferred(Area2D.PropertyName.Monitorable, false);
+                area.SetDeferred(CollisionObject2D.PropertyName.CollisionLayer, 0);
+                area.SetDeferred(CollisionObject2D.PropertyName.CollisionMask, 0);
+            }
+
+            DisableCollisionsRecursively(child);
+        }
     }
 }
