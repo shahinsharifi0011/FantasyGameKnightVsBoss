@@ -4,6 +4,7 @@ public partial class GameOverScreen : CanvasLayer
 {
     private Control _panel = null!;
     private Button _restartButton = null!;
+    private bool _isShown;
 
     public override void _Ready()
     {
@@ -17,6 +18,12 @@ public partial class GameOverScreen : CanvasLayer
 
     public void ShowGameOver()
     {
+        if (_isShown)
+        {
+            return;
+        }
+
+        _isShown = true;
         _panel.Show();
         GetTree().Paused = true;
     }
