@@ -63,6 +63,8 @@ public partial class BossController : CharacterBody2D
         _bossHitbox = GetNodeOrNull<Area2D>(BossHitboxPath)
             ?? FindChild("BossHitbox", true, false) as Area2D
             ?? CreateFallbackHitbox();
+        _bossHitbox.CollisionLayer = 0;
+        _bossHitbox.CollisionMask = 1;
 
         _health.Died += OnDied;
         if (_animatedSprite is not null)
@@ -71,6 +73,13 @@ public partial class BossController : CharacterBody2D
         }
         _bossHitbox.BodyEntered += OnBossHitboxBodyEntered;
         SetHitboxActive(false);
+        if (!HasAnimation("idle") || !HasAnimation("attack") || !HasAnimation("death"))
+        {
+            GD.PushWarning(
+                $"'{Name}' should have non-looping 'attack' and 'death' animations, "
+                + "plus an 'idle' animation, on its AnimatedSprite2D.");
+        }
+
         PlayAnimation("idle");
     }
 

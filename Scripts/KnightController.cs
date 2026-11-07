@@ -40,7 +40,8 @@ public partial class KnightController : CharacterBody2D
     private bool _isDead;
 
     public float MoveInput => Input.GetAxis(MoveLeftAction, MoveRightAction);
-    public bool IsBlocking => _stateMachine.CurrentState is BlockState;
+    public bool IsBlocking =>
+        Input.IsActionPressed(BlockAction) || _stateMachine.CurrentState is BlockState;
 
     public override void _Ready()
     {
@@ -64,6 +65,13 @@ public partial class KnightController : CharacterBody2D
         }
 
         _stateMachine.PhysicsUpdate(delta);
+        if (_attackHitbox.Monitoring)
+        {
+            foreach (Node2D body in _attackHitbox.GetOverlappingBodies())
+            {
+                TryDamageBoss(body);
+            }
+        }
 
         if (!IsOnFloor())
         {
@@ -102,7 +110,7 @@ public partial class KnightController : CharacterBody2D
 
         if (IsBlocking)
         {
-            amount = Math.Max(1, amount / 2);
+            return;
         }
 
         _health.TakeDamage(amount);
@@ -157,6 +165,11 @@ public partial class KnightController : CharacterBody2D
     }
 
     private void OnAttackHitboxBodyEntered(Node2D body)
+    {
+        TryDamageBoss(body);
+    }
+
+    private void TryDamageBoss(Node2D body)
     {
         if (!body.IsInGroup("Boss") || !_hitBosses.Add(body.GetInstanceId()))
         {
