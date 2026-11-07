@@ -46,6 +46,7 @@ public partial class BossController : CharacterBody2D
     private bool _attackHasHitPlayer;
     private bool _usingFallbackHitbox;
     private bool _isDead;
+    private bool _deathSequenceFinished;
 
     public override void _Ready()
     {
@@ -239,7 +240,7 @@ public partial class BossController : CharacterBody2D
         DisableCollisionsRecursively(this);
         if (_animatedSprite is null || !HasAnimation("death"))
         {
-            QueueFree();
+            CompleteDeathSequence();
             return;
         }
 
@@ -255,8 +256,30 @@ public partial class BossController : CharacterBody2D
             && _animatedSprite is not null
             && _animatedSprite.Animation == new StringName("death"))
         {
-            QueueFree();
+            CompleteDeathSequence();
         }
+    }
+
+    private void CompleteDeathSequence()
+    {
+        if (_deathSequenceFinished)
+        {
+            return;
+        }
+
+        _deathSequenceFinished = true;
+        Godot.Collections.Array<Node> gameOverScreens = GetTree().GetNodesInGroup("GameOverUI");
+        if (gameOverScreens.Count > 0
+            && gameOverScreens[0] is GameOverScreen gameOverScreen)
+        {
+            gameOverScreen.ShowVictory();
+        }
+        else
+        {
+            GD.PushError("No GameOverScreen was found after the boss was defeated.");
+        }
+
+        QueueFree();
     }
 
     private void DisableCollisionsRecursively(Node node)
