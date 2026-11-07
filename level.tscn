@@ -4,6 +4,7 @@
 [ext_resource type="PackedScene" uid="uid://r4xfl76s8k2v" path="res://player.tscn" id="1_u52ul"]
 [ext_resource type="PackedScene" path="res://boss.tscn" id="boss_scene"]
 [ext_resource type="Script" path="res://Scripts/BossHud.cs" id="boss_hud_script"]
+[ext_resource type="Script" path="res://Scripts/GameOverScreen.cs" id="game_over_screen_script"]
 [ext_resource type="Texture2D" uid="uid://dliy5tjsvd2ue" path="res://MapTiles/Platformer/Cartoon_Medieval_Field_Work_Level_Set_Platformer - Ground 02.png" id="2_v5j5c"]
 [ext_resource type="Texture2D" uid="uid://dub4jwkvs5xcp" path="res://MapTiles/Platformer/Cartoon_Medieval_Field_Work_Level_Set_Platformer - Ground 11.png" id="3_5pxul"]
 [ext_resource type="Texture2D" uid="uid://dcafhxk400eyy" path="res://MapTiles/Platformer/Cartoon_Medieval_Field_Work_Level_Set_Platformer - Ground 12.png" id="4_fedht"]
@@ -868,6 +869,33 @@ offset_right = 700.0
 offset_bottom = 710.0
 theme_override_font_sizes/font_size = 16
 text = "A/D move   Space jump   Left click attack   Right click block"
+
+[node name="GameOverScreen" type="CanvasLayer" parent="."]
+script = ExtResource("game_over_screen_script")
+
+[node name="Panel" type="PanelContainer" parent="GameOverScreen"]
+visible = false
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -180.0
+offset_top = -90.0
+offset_right = 180.0
+offset_bottom = 90.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="GameOverScreen/Panel"]
+layout_mode = 2
+
+[node name="GameOverLabel" type="Label" parent="GameOverScreen/Panel/VBoxContainer"]
+layout_mode = 2
+text = "GAME OVER"
+horizontal_alignment = 1
+
+[node name="RestartButton" type="Button" parent="GameOverScreen/Panel/VBoxContainer"]
+layout_mode = 2
+text = "Restart"
 
 [node name="LeftWall" type="StaticBody2D" parent="." unique_id=830435602]
 
