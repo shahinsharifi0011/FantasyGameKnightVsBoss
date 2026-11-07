@@ -818,7 +818,6 @@ safe_margin = 0.001
 position = Vector2(-17120, 455)
 
 [node name="HUD" type="CanvasLayer" parent="."]
-script = ExtResource("boss_hud_script")
 
 [node name="PlayerHealth" type="Label" parent="HUD"]
 offset_left = 24.0
@@ -835,6 +834,25 @@ offset_right = 280.0
 offset_bottom = 90.0
 theme_override_font_sizes/font_size = 24
 text = "BOSS  20 / 20"
+
+[node name="ProgressBar" type="ProgressBar" parent="HUD"]
+offset_left = 300.0
+offset_top = 60.0
+offset_right = 540.0
+offset_bottom = 84.0
+max_value = 20.0
+value = 20.0
+show_percentage = false
+script = ExtResource("boss_hud_script")
+
+[node name="PlayerProgressBar" type="ProgressBar" parent="HUD"]
+offset_left = 300.0
+offset_top = 20.0
+offset_right = 540.0
+offset_bottom = 44.0
+max_value = 5.0
+value = 5.0
+show_percentage = false
 
 [node name="Status" type="Label" parent="HUD"]
 offset_left = 24.0

@@ -1,42 +1,44 @@
+using System;
 using Godot;
 
-public partial class BossHud : CanvasLayer
+public partial class BossHud : ProgressBar
 {
-    [Export]
-    public NodePath PlayerHealthPath { get; set; } = new("../Player/HealthComponent");
-
-    [Export]
-    public NodePath BossHealthPath { get; set; } = new("../Boss/HealthComponent");
-
-    [Export]
-    public NodePath PlayerLabelPath { get; set; } = new("PlayerHealth");
-
-    [Export]
-    public NodePath BossLabelPath { get; set; } = new("BossHealth");
-
-    [Export]
-    public NodePath StatusLabelPath { get; set; } = new("Status");
-
-    private HealthComponent _playerHealth = null!;
-    private HealthComponent _bossHealth = null!;
-    private Label _playerLabel = null!;
-    private Label _bossLabel = null!;
-    private Label _statusLabel = null!;
+    private ProgressBar _playerProgressBar = null!;
 
     public override void _Ready()
     {
-        _playerHealth = GetNode<HealthComponent>(PlayerHealthPath);
-        _bossHealth = GetNode<HealthComponent>(BossHealthPath);
-        _playerLabel = GetNode<Label>(PlayerLabelPath);
-        _bossLabel = GetNode<Label>(BossLabelPath);
-        _statusLabel = GetNode<Label>(StatusLabelPath);
+        _playerProgressBar = GetParent().GetNode<ProgressBar>("PlayerProgressBar");
 
-        _playerHealth.HealthChanged += OnPlayerHealthChanged;
-        _playerHealth.Died += OnPlayerDied;
-        _bossHealth.HealthChanged += OnBossHealthChanged;
-        _bossHealth.Died += OnBossDied;
-        UpdatePlayerHealth(_playerHealth.CurrentHealth, _playerHealth.MaxHealth);
-        UpdateBossHealth(_bossHealth.CurrentHealth, _bossHealth.MaxHealth);
+        Godot.Collections.Array<Node> players = GetTree().GetNodesInGroup("Player");
+        if (players.Count == 0)
+        {
+            throw new InvalidOperationException("No node was found in the 'Player' group.");
+        }
+
+        HealthComponent playerHealth = players[0].GetNodeOrNull<HealthComponent>("HealthComponent")
+            ?? throw new InvalidOperationException(
+                "The first node in the 'Player' group has no HealthComponent child.");
+
+        playerHealth.HealthChanged += OnPlayerHealthChanged;
+        UpdatePlayerHealth(playerHealth.CurrentHealth, playerHealth.MaxHealth);
+    }
+
+    public override void _Process(double delta)
+    {
+        Godot.Collections.Array<Node> bosses = GetTree().GetNodesInGroup("Boss");
+        if (bosses.Count == 0)
+        {
+            return;
+        }
+
+        HealthComponent health = bosses[0].GetNodeOrNull<HealthComponent>("HealthComponent");
+        if (health is null)
+        {
+            return;
+        }
+
+        MaxValue = health.MaxHealth;
+        Value = health.CurrentHealth;
     }
 
     private void OnPlayerHealthChanged(int currentHealth, int maximumHealth)
@@ -44,28 +46,9 @@ public partial class BossHud : CanvasLayer
         UpdatePlayerHealth(currentHealth, maximumHealth);
     }
 
-    private void OnBossHealthChanged(int currentHealth, int maximumHealth)
-    {
-        UpdateBossHealth(currentHealth, maximumHealth);
-    }
-
-    private void OnPlayerDied()
-    {
-        _statusLabel.Text = "Knight defeated - restarting...";
-    }
-
-    private void OnBossDied()
-    {
-        _statusLabel.Text = "Boss defeated!";
-    }
-
     private void UpdatePlayerHealth(int currentHealth, int maximumHealth)
     {
-        _playerLabel.Text = $"KNIGHT  {currentHealth} / {maximumHealth}";
-    }
-
-    private void UpdateBossHealth(int currentHealth, int maximumHealth)
-    {
-        _bossLabel.Text = $"BOSS  {currentHealth} / {maximumHealth}";
+        _playerProgressBar.MaxValue = maximumHealth;
+        _playerProgressBar.Value = currentHealth;
     }
 }
