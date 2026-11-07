@@ -212,6 +212,15 @@ public partial class KnightController : CharacterBody2D
     {
         if (_isDead && _animatedSprite.Animation == new StringName("death"))
         {
+            Godot.Collections.Array<Node> gameOverScreens = GetTree().GetNodesInGroup("GameOverUI");
+            if (gameOverScreens.Count > 0
+                && gameOverScreens[0] is GameOverScreen gameOverScreen)
+            {
+                gameOverScreen.ShowGameOver();
+                return;
+            }
+
+            GD.PushError("No GameOverScreen was found; restarting the level.");
             GetTree().ReloadCurrentScene();
         }
     }
