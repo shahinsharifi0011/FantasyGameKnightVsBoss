@@ -43,6 +43,8 @@ public partial class BossController : CharacterBody2D
     private double _attackHitboxRemaining;
     private bool _isAttacking;
     private bool _isHitboxActive;
+    private bool _attackHasHitPlayer;
+    private bool _usingFallbackHitbox;
     private bool _isDead;
 
     public override void _Ready()
@@ -146,6 +148,13 @@ public partial class BossController : CharacterBody2D
         _attackWindupRemaining = Math.Max(0.0, AttackWindup);
         _attackHitboxRemaining = Math.Max(0.0, AttackHitboxDuration);
         _attackCooldownRemaining = Math.Max(0.0, AttackCooldown);
+        _attackHasHitPlayer = false;
+        if (_usingFallbackHitbox && _player is not null)
+        {
+            float direction = Mathf.Sign(_player.GlobalPosition.X - GlobalPosition.X);
+            _bossHitbox.Position = new Vector2(direction * AttackRange * 0.5f, -10.0f);
+        }
+
         SetHitboxActive(false);
         PlayAnimation("attack");
     }
@@ -162,6 +171,11 @@ public partial class BossController : CharacterBody2D
             }
 
             return;
+        }
+
+        foreach (Node2D body in _bossHitbox.GetOverlappingBodies())
+        {
+            TryDamagePlayer(body);
         }
 
         _attackHitboxRemaining -= delta;
@@ -183,10 +197,19 @@ public partial class BossController : CharacterBody2D
 
     private void OnBossHitboxBodyEntered(Node2D body)
     {
-        if (!_isDead
-            && body.IsInGroup("player")
-            && body is KnightController player)
+        TryDamagePlayer(body);
+    }
+
+    private void TryDamagePlayer(Node2D body)
+    {
+        if (_isDead || !_isAttacking || !_isHitboxActive || _attackHasHitPlayer)
         {
+            return;
+        }
+
+        if (body.IsInGroup("player") && body is KnightController player)
+        {
+            _attackHasHitPlayer = true;
             player.TakeDamage(AttackDamage);
         }
     }
@@ -211,6 +234,9 @@ public partial class BossController : CharacterBody2D
             return;
         }
 
+        _animatedSprite.SpriteFrames!.SetAnimationLoopMode(
+            new StringName("death"),
+            SpriteFrames.LoopMode.None);
         PlayAnimation("death");
     }
 
@@ -279,6 +305,7 @@ public partial class BossController : CharacterBody2D
 
     private Area2D CreateFallbackHitbox()
     {
+        _usingFallbackHitbox = true;
         Area2D hitbox = new()
         {
             Name = "BossHitbox",
@@ -295,6 +322,7 @@ public partial class BossController : CharacterBody2D
         };
         hitbox.AddChild(collisionShape);
         AddChild(hitbox);
+        hitbox.Position = new Vector2(AttackRange * 0.5f, -10.0f);
         return hitbox;
     }
 }
