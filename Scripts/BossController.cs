@@ -35,7 +35,7 @@ public partial class BossController : CharacterBody2D
     public int AttackDamage { get; set; } = 1;
 
     private HealthComponent _health = null!;
-    private AnimatedSprite2D _animatedSprite = null!;
+    private AnimatedSprite2D? _animatedSprite;
     private Area2D _bossHitbox = null!;
     private KnightController? _player;
     private double _attackCooldownRemaining;
@@ -43,19 +43,34 @@ public partial class BossController : CharacterBody2D
     private double _attackHitboxRemaining;
     private bool _isAttacking;
     private bool _isHitboxActive;
+    private bool _attackHasHitPlayer;
+    private bool _usingFallbackHitbox;
     private bool _isDead;
 
     public override void _Ready()
     {
         AddToGroup("Boss");
         _health = GetNode<HealthComponent>(HealthComponentPath);
-        _animatedSprite = GetNode<AnimatedSprite2D>(AnimatedSpritePath);
-        _bossHitbox = GetNode<Area2D>(BossHitboxPath);
+        _animatedSprite = GetNodeOrNull<AnimatedSprite2D>(AnimatedSpritePath)
+            ?? FindChild("AnimatedSprite2D", true, false) as AnimatedSprite2D;
+        if (_animatedSprite is null)
+        {
+            GD.PushWarning(
+                $"'{Name}' has no AnimatedSprite2D at '{AnimatedSpritePath}'. "
+                + "Boss movement and hit detection will continue without animations.");
+        }
+
+        _bossHitbox = GetNodeOrNull<Area2D>(BossHitboxPath)
+            ?? FindChild("BossHitbox", true, false) as Area2D
+            ?? CreateFallbackHitbox();
 
         _health.Died += OnDied;
-        _animatedSprite.AnimationFinished += OnAnimationFinished;
+        if (_animatedSprite is not null)
+        {
+            _animatedSprite.AnimationFinished += OnAnimationFinished;
+        }
         _bossHitbox.BodyEntered += OnBossHitboxBodyEntered;
-        _bossHitbox.Monitoring = false;
+        SetHitboxActive(false);
         PlayAnimation("idle");
     }
 
@@ -79,10 +94,13 @@ public partial class BossController : CharacterBody2D
         }
 
         Vector2 toPlayer = _player.GlobalPosition - GlobalPosition;
-        _animatedSprite.FlipH = toPlayer.X < 0.0f;
+        if (_animatedSprite is not null)
+        {
+            _animatedSprite.FlipH = toPlayer.X < 0.0f;
+        }
         ApplyGravity(delta);
 
-        if (toPlayer.Length() > AttackRange)
+        if (Mathf.Abs(toPlayer.X) > AttackRange)
         {
             CancelAttack();
             Velocity = new Vector2(Mathf.Sign(toPlayer.X) * MoveSpeed, Velocity.Y);
@@ -130,7 +148,14 @@ public partial class BossController : CharacterBody2D
         _attackWindupRemaining = Math.Max(0.0, AttackWindup);
         _attackHitboxRemaining = Math.Max(0.0, AttackHitboxDuration);
         _attackCooldownRemaining = Math.Max(0.0, AttackCooldown);
-        _bossHitbox.Monitoring = false;
+        _attackHasHitPlayer = false;
+        if (_usingFallbackHitbox && _player is not null)
+        {
+            float direction = Mathf.Sign(_player.GlobalPosition.X - GlobalPosition.X);
+            _bossHitbox.Position = new Vector2(direction * AttackRange * 0.5f, -10.0f);
+        }
+
+        SetHitboxActive(false);
         PlayAnimation("attack");
     }
 
@@ -142,16 +167,21 @@ public partial class BossController : CharacterBody2D
             if (_attackWindupRemaining <= 0.0)
             {
                 _isHitboxActive = true;
-                _bossHitbox.Monitoring = true;
+                SetHitboxActive(true);
             }
 
             return;
         }
 
+        foreach (Node2D body in _bossHitbox.GetOverlappingBodies())
+        {
+            TryDamagePlayer(body);
+        }
+
         _attackHitboxRemaining -= delta;
         if (_attackHitboxRemaining <= 0.0)
         {
-            _bossHitbox.Monitoring = false;
+            SetHitboxActive(false);
             _isHitboxActive = false;
             _isAttacking = false;
             PlayAnimation("idle");
@@ -160,17 +190,26 @@ public partial class BossController : CharacterBody2D
 
     private void CancelAttack()
     {
-        _bossHitbox.Monitoring = false;
+        SetHitboxActive(false);
         _isHitboxActive = false;
         _isAttacking = false;
     }
 
     private void OnBossHitboxBodyEntered(Node2D body)
     {
-        if (!_isDead
-            && body.IsInGroup("player")
-            && body is KnightController player)
+        TryDamagePlayer(body);
+    }
+
+    private void TryDamagePlayer(Node2D body)
+    {
+        if (_isDead || !_isAttacking || !_isHitboxActive || _attackHasHitPlayer)
         {
+            return;
+        }
+
+        if (body.IsInGroup("player") && body is KnightController player)
+        {
+            _attackHasHitPlayer = true;
             player.TakeDamage(AttackDamage);
         }
     }
@@ -189,12 +228,23 @@ public partial class BossController : CharacterBody2D
         SetDeferred(CollisionObject2D.PropertyName.CollisionLayer, 0);
         SetDeferred(CollisionObject2D.PropertyName.CollisionMask, 0);
         DisableCollisionsRecursively(this);
+        if (_animatedSprite is null || !HasAnimation("death"))
+        {
+            QueueFree();
+            return;
+        }
+
+        _animatedSprite.SpriteFrames!.SetAnimationLoopMode(
+            new StringName("death"),
+            SpriteFrames.LoopMode.None);
         PlayAnimation("death");
     }
 
     private void OnAnimationFinished()
     {
-        if (_isDead && _animatedSprite.Animation == new StringName("death"))
+        if (_isDead
+            && _animatedSprite is not null
+            && _animatedSprite.Animation == new StringName("death"))
         {
             QueueFree();
         }
@@ -226,20 +276,53 @@ public partial class BossController : CharacterBody2D
 
     private bool HasAnimation(string animationName)
     {
-        return _animatedSprite.SpriteFrames?.HasAnimation(new StringName(animationName)) ?? false;
+        return _animatedSprite?.SpriteFrames?.HasAnimation(new StringName(animationName)) ?? false;
     }
 
     private void PlayAnimation(string animationName)
     {
-        if (!HasAnimation(animationName))
+        AnimatedSprite2D? animatedSprite = _animatedSprite;
+        if (animatedSprite is null)
         {
-            throw new InvalidOperationException(
-                $"The boss AnimatedSprite2D has no animation named '{animationName}'.");
+            return;
         }
 
-        if (_animatedSprite.Animation != new StringName(animationName))
+        if (!HasAnimation(animationName))
         {
-            _animatedSprite.Play(animationName);
+            return;
         }
+
+        if (animatedSprite.Animation != new StringName(animationName))
+        {
+            animatedSprite.Play(animationName);
+        }
+    }
+
+    private void SetHitboxActive(bool active)
+    {
+        _bossHitbox.SetDeferred(Area2D.PropertyName.Monitoring, active);
+    }
+
+    private Area2D CreateFallbackHitbox()
+    {
+        _usingFallbackHitbox = true;
+        Area2D hitbox = new()
+        {
+            Name = "BossHitbox",
+            CollisionLayer = 0,
+            CollisionMask = 1
+        };
+        RectangleShape2D shape = new()
+        {
+            Size = new Vector2(AttackRange, 70.0f)
+        };
+        CollisionShape2D collisionShape = new()
+        {
+            Shape = shape
+        };
+        hitbox.AddChild(collisionShape);
+        AddChild(hitbox);
+        hitbox.Position = new Vector2(AttackRange * 0.5f, -10.0f);
+        return hitbox;
     }
 }
