@@ -206,6 +206,9 @@ public partial class KnightController : CharacterBody2D
         SetDeferred(CollisionObject2D.PropertyName.CollisionLayer, 0);
         SetDeferred(CollisionObject2D.PropertyName.CollisionMask, 0);
         DisableCollisionsRecursively(this);
+        _animatedSprite.SpriteFrames!.SetAnimationLoopMode(
+            new StringName("death"),
+            SpriteFrames.LoopMode.None);
         PlayAnimation("death");
     }
 
